@@ -2,7 +2,7 @@ test_models:
 	@pytest orgunits/tests/models/
 
 test_api:
-	@pytest orgunits/tests/api/
+	@pytest orgunits/tests/views/
 
 test_optimization:
 	@pytest orgunits/tests/optimization/
