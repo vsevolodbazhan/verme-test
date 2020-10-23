@@ -57,3 +57,6 @@ class Organization(models.Model):
 
         :rtype: django.db.models.QuerySet
         """
+
+    def __str__(self):
+        return self.name
