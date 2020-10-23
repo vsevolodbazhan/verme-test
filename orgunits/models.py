@@ -34,7 +34,17 @@ class OrganizationQuerySet(models.QuerySet):
 
         :type child_org_id: int
         """
-        return self.filter()
+        result = self.filter(id=child_org_id)
+        if not result:
+            return result
+
+        child = result.first()
+        while parent := child.parent:
+            result = result | self.filter(id=parent.id)
+            child = parent
+
+        return result
+
 
 
 class Organization(models.Model):
@@ -60,6 +70,8 @@ class Organization(models.Model):
 
         :rtype: django.db.models.QuerySet
         """
+        result = Organization.objects.tree_upwards(self.id)
+        return result.exclude(id=self.id)
 
     def children(self):
         """
