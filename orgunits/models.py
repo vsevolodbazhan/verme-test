@@ -10,11 +10,22 @@ class OrganizationQuerySet(models.QuerySet):
     def tree_downwards(self, root_org_id):
         """
         Возвращает корневую организацию с запрашиваемым root_org_id и всех её детей любого уровня вложенности
-        TODO: Написать фильтр с помощью ORM или RawSQL запроса или функций Python
 
         :type root_org_id: int
         """
-        return self.filter()
+        result = self.filter(id=root_org_id)
+        if not result:
+            return result
+
+        root = result.first()
+        children = root.organization_set.all()
+        if children is None:
+            return result
+
+        for child in children:
+            result = result | self.tree_downwards(child.id)
+
+        return result
 
     def tree_upwards(self, child_org_id):
         """
@@ -53,10 +64,11 @@ class Organization(models.Model):
     def children(self):
         """
         Возвращает всех детей любого уровня вложенности
-        TODO: Написать метод, используя ORM и .tree_downwards()
 
         :rtype: django.db.models.QuerySet
         """
+        result = Organization.objects.tree_downwards(self.id)
+        return result.exclude(id=self.id)
 
     def __str__(self):
         return self.name
