@@ -45,20 +45,37 @@ class OrganizationQuerySet(models.QuerySet):
     def tree_upwards(self, child_org_id):
         """
         Возвращает корневую организацию с запрашиваемым child_org_id и всех её родителей любого уровня вложенности
-        TODO: Написать фильтр с помощью ORM или RawSQL запроса или функций Python
 
         :type child_org_id: int
         """
-        result = self.filter(id=child_org_id)
-        if not result:
-            return result
+        query = RawSQL(
+            """
+            WITH RECURSIVE organizations_higherups(id, parent_id) AS 
+            (
+                SELECT
+                    id, parent_id
+                FROM
+                    orgunits_organization AS organization
+                WHERE
+                    organization.id = %s
+                UNION
+                SELECT
+                    organization.id, organization.parent_id
+                FROM
+                    orgunits_organization AS organization 
+                    JOIN
+                        organizations_higherups 
+                        ON organizations_higherups.parent_id = organization.id 
+            )
+            SELECT
+                id
+            FROM
+                organizations_higherups
+            """,
+            [child_org_id]
+        )
 
-        child = result.first()
-        while parent := child.parent:
-            result = result | self.filter(id=parent.id)
-            child = parent
-
-        return result
+        return self.filter(id__in=query)
 
 
 
@@ -81,7 +98,6 @@ class Organization(models.Model):
     def parents(self):
         """
         Возвращает всех родителей любого уровня вложенности
-        TODO: Написать метод, используя ORM и .tree_upwards()
 
         :rtype: django.db.models.QuerySet
         """
