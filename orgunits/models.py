@@ -13,19 +13,34 @@ class OrganizationQuerySet(models.QuerySet):
 
         :type root_org_id: int
         """
-        result = self.filter(id=root_org_id)
-        if not result:
-            return result
+        query = RawSQL(
+            """
+            WITH RECURSIVE organizations_higherups(id) AS 
+            (
+                SELECT
+                    id 
+                FROM
+                    orgunits_organization AS organization 
+                WHERE
+                    organization.id = %s 
+                UNION
+                SELECT
+                    organization.id 
+                FROM
+                    orgunits_organization AS organization 
+                    JOIN
+                        organizations_higherups 
+                        ON organization.parent_id = organizations_higherups.id 
+            )
+            SELECT
+                * 
+            FROM
+                organizations_higherups
+            """,
+            [root_org_id]
+        )
 
-        root = result.first()
-        children = root.organization_set.all()
-        if children is None:
-            return result
-
-        for child in children:
-            result = result | self.tree_downwards(child.id)
-
-        return result
+        return self.filter(id__in=query)
 
     def tree_upwards(self, child_org_id):
         """
